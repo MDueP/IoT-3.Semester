@@ -1,1 +1,3 @@
 IoT-3.Semester.code-workspace
+.venv
+*.env
