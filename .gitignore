@@ -1,0 +1,6 @@
+IoT-3.Semester.code-workspace
+.venv
+*.env
+*.docx
+*.crt
+*.key

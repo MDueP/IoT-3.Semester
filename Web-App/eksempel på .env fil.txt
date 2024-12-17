@@ -1,0 +1,5 @@
+MYSQL_DB = "iot3webapp"
+MYSQL_USER = "root"
+MYSQL_PASSWORD = "keaiot3"
+MYSQL_HOST = "localhost"
+FLASK_APP_KEY = "hejmeddig"

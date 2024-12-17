@@ -1,0 +1,19 @@
+schema name: iot3webapp
+table name: logindb
+
+
+CREATE TABLE `logindb` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `username` varchar(50) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+
+CREATE TABLE `gyrodata` (
+  `id` int NOT NULL AUTO_INCREMENT,
+    gyro_x FLOAT,
+    gyro_y FLOAT,
+    gyro_z FLOAT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
