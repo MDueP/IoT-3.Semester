@@ -179,7 +179,9 @@ def datagrafer():
 
 @app.route('/graph', methods=['GET', 'POST'])
 def graph():
-    return render_template('graph.html')
+    if 'loggedin' in session:
+        return render_template('graph.html')
+    return redirect(url_for('login'))
 
 
 @app.route('/', methods=['GET', 'POST'])
