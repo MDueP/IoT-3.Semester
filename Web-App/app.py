@@ -1,3 +1,13 @@
+from datetime import datetime, timedelta
+import json
+import re
+import MySQLdb.cursors
+import paho.mqtt.client as mqtt
+from io import BytesIO
+import numpy as np
+from matplotlib.patches import Circle
+import matplotlib.pyplot as plt
+import matplotlib.gridspec
 from flask import Flask, request, redirect, url_for, session, render_template, Response
 from flask_mysqldb import MySQL
 from flask_bcrypt import Bcrypt
@@ -5,18 +15,7 @@ import dotenv
 import os
 import matplotlib
 matplotlib.use('Agg')
-import matplotlib.gridspec
-import matplotlib.pyplot as plt
-from matplotlib.patches import Circle
-import numpy as np
-from io import BytesIO
-import paho.mqtt.client as mqtt
-import MySQLdb.cursors
-import re
-import json
-from datetime import datetime, timedelta
 
-###  Objects & Encapsulation ###
 absolutepath = os.path.dirname(os.path.abspath(__file__))
 os.chdir(absolutepath)
 dotenv.load_dotenv()
@@ -34,7 +33,6 @@ app.config["MYSQL_DB"] = os.getenv("MYSQL_DB")
 mysql = MySQL(app)
 
 cache_sensor = {"puls": [], "batteri_procent": []}
-### Funktioner ###
 
 
 def fetch_data():
@@ -73,18 +71,17 @@ def drop_data():
     cursor.execute("DELETE FROM gyrodata WHERE timestamp < %s",
                    (datetime.now() - timedelta(minutes=5),))
     mysql.connection.commit()
-#Encapsulation af mqtt i Flask, da Linux eller ikke bliver glad :(, 
-#Det er fordi mqtt loop ting starter sin egen thread og er dermed ude af miljøet, så brokker den sig
+
+
 def mqtt_setup(app):
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     client.connect("localhost", 1883)
     client.subscribe("iot3")
 
     def message(client, data, msg):
-        with app.app_context():  # Push app context
+        with app.app_context():
             try:
                 sensordata = json.loads(msg.payload.decode())
-
                 batteriprocent = sensordata["BatteryPercentage"]
                 Puls = sensordata["HeartRate"]
                 gyro_data = sensordata["Gyroscope"]
@@ -98,17 +95,14 @@ def mqtt_setup(app):
                     cache_sensor["puls"].pop(0)
                 if len(cache_sensor["batteri_procent"]) > 10:
                     cache_sensor["batteri_procent"].pop(0)
-                # Perform database operations
                 cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
                 cursor.execute(
                     "INSERT INTO gyrodata (gyro_x, gyro_y, gyro_z) VALUES (%s, %s, %s)",
                     (gyro_x, gyro_y, gyro_z)
                 )
                 mysql.connection.commit()
-
             except Exception as e:
                 print(f"Error processing message: {e}")
-
     client.on_message = message
     client.loop_start()
 
@@ -116,81 +110,76 @@ def mqtt_setup(app):
 mqtt_setup(app)
 
 
-### Web Routing ###
-
-"""Selveste graferne og det visuelle af hjemmesiden"""
-
-
 @app.route("/graphplot", methods=["GET", "POST"])
 def datagrafer():
-        data = fetch_data()
-        fald_opdaget = tjek_for_fald(data)
-        gyro_x = [entry["GyroX"] for entry in data]
-        Timestamps = [(datetime.now() + timedelta(minutes=i)).strftime("%H:%M") for i in range(len(gyro_x))]
-        global cache_sensor
+    data = fetch_data()
+    fald_opdaget = tjek_for_fald(data)
+    gyro_x = [entry["GyroX"] for entry in data]
+    Timestamps = [(datetime.now() + timedelta(minutes=i)).strftime("%H:%M")
+                  for i in range(len(gyro_x))]
+    global cache_sensor
 
-        hjerterytme = cache_sensor["puls"]
-        batteri = cache_sensor["batteri_procent"]
+    hjerterytme = cache_sensor["puls"]
+    batteri = cache_sensor["batteri_procent"]
 
-        fig, ax = plt.subplots(3, 1, figsize=(10, 8), constrained_layout=True)
-        
-        spec = matplotlib.gridspec.GridSpec(3,2, width_ratios=[1, 1], height_ratios=[1,1,1])
-        ax[0] = fig.add_subplot(spec[0,0])
-        
+    fig, ax = plt.subplots(3, 1, figsize=(10, 8), constrained_layout=True)
 
-        if gyro_x:
-            ax[0].plot(Timestamps, gyro_x, label="Gyro X")
-        ax[0].legend()
-        ax[0].set_title("Gyroscope Data")
-        ax[0].set_xlabel("Time")
-        ax[0].set_ylabel("Value")
-        ax[0].set_xticks([])
-        ax[0].grid()
-        
-        ax_circle = fig.add_subplot(spec[0, 1])
+    spec = matplotlib.gridspec.GridSpec(
+        3, 2, width_ratios=[1, 1], height_ratios=[1, 1, 1])
+    ax[0] = fig.add_subplot(spec[0, 0])
 
-        circle_color = "green" if fald_opdaget else "red"
-        ax_circle.add_patch(Circle((0.5, 0.5), 0.4, color=circle_color))
-        ax_circle.text(0.5, -0.2, "Intet fald" if fald_opdaget else "Fald opdaget", 
-                    color=circle_color, fontsize=10, ha="center")
-        ax_circle.set_xticks([])
-        ax_circle.set_xlim(0, 1)
-        ax_circle.set_ylim(0, 1)
-        ax_circle.axis("off")
-        
-        if hjerterytme:
-            ax[1].plot(Timestamps[:len(hjerterytme)], hjerterytme, label="Puls", color="red")
-        ax[1].set_title("Hjerterytme")
-        ax[1].set_xlabel("Tid")
-        ax[1].set_ylabel("BPM")
-        ax[1].grid()
-        ax[1].legend()
+    if gyro_x:
+        ax[0].plot(Timestamps, gyro_x, label="Gyro X")
+    ax[0].legend()
+    ax[0].set_title("Gyroscope Data")
+    ax[0].set_xlabel("Time")
+    ax[0].set_ylabel("Value")
+    ax[0].set_xticks([])
+    ax[0].grid()
 
-        
-        if batteri:
-            ax[2].plot(Timestamps[:len(batteri)], batteri, label="Batteriprocent", color="green")
-        ax[2].set_title("Batteri")
-        ax[2].set_xlabel("Tid")
-        ax[2].set_ylabel("Battery %")
-        ax[2].grid()
-        ax[2].legend()
+    ax_circle = fig.add_subplot(spec[0, 1])
 
-        buf = BytesIO()
-        fig.tight_layout()
-        fig.savefig(buf, format="png")
-        plt.close(fig)
-        buf.seek(0)
-        
-        drop_data()
-        
-        return Response(buf, mimetype='image/png')
+    circle_color = "red" if fald_opdaget else "green"
+    ax_circle.add_patch(Circle((0.5, 0.5), 0.4, color=circle_color))
+    ax_circle.text(0.5, -0.2, "Fald opdaget" if fald_opdaget else "Intet fald",
+                   color=circle_color, fontsize=10, ha="center")
+    ax_circle.set_xticks([])
+    ax_circle.set_xlim(0, 1)
+    ax_circle.set_ylim(0, 1)
+    ax_circle.axis("off")
+
+    if hjerterytme:
+        ax[1].plot(Timestamps[:len(hjerterytme)],
+                   hjerterytme, label="Puls", color="red")
+    ax[1].set_title("Hjerterytme")
+    ax[1].set_xlabel("Tid")
+    ax[1].set_ylabel("BPM")
+    ax[1].grid()
+    ax[1].legend()
+
+    if batteri:
+        ax[2].plot(Timestamps[:len(batteri)], batteri,
+                   label="Batteriprocent", color="green")
+    ax[2].set_title("Batteri")
+    ax[2].set_xlabel("Tid")
+    ax[2].set_ylabel("Batteri %")
+    ax[2].grid()
+    ax[2].legend()
+
+    buf = BytesIO()
+    fig.tight_layout()
+    fig.savefig(buf, format="png")
+    plt.close(fig)
+    buf.seek(0)
+
+    drop_data()
+
+    return Response(buf, mimetype='image/png')
+
+
 @app.route('/graph', methods=['GET', 'POST'])
 def graph():
     return render_template('graph.html')
-    
-"""
-    Login til selveste hjemmesiden, salted med bcrypt
-    """
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -212,11 +201,13 @@ def login():
             msg = 'Incorrect Username or Password'
     return render_template('login.html', msg=msg)
 
+
 @app.route('/home')
 def home():
     if 'loggedin' in session:
         return render_template('home.html', username=session['username'])
     return redirect(url_for('login'))
+
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
