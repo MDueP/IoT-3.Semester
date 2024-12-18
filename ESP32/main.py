@@ -50,11 +50,6 @@ def get_batteryprocent():
     procent = max(0, min(procent, 100))
     return procent
 
-
-def stabilizer_against_flunct(buffer):
-    return sum(buffer) / len(buffer)
-
-
 def gyrometer():
     gyrodata = mpu.get_values()
     data = {
