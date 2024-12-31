@@ -45,9 +45,9 @@ def fetch_data():
 
 
 def tjek_for_fald(data):
-    gyro_x = [entry["GyroX"] for entry in data]
-    gyro_y = [entry["GyroY"] for entry in data]
-    gyro_z = [entry["GyroZ"] for entry in data]
+    gyro_x = np.array([entry["GyroX"] for entry in data])
+    gyro_y = np.array([entry["GyroY"] for entry in data])
+    gyro_z = np.array([entry["GyroZ"] for entry in data])
 
     mean_x = np.mean(gyro_x)
     mean_y = np.mean(gyro_y)
@@ -113,7 +113,8 @@ mqtt_setup(app)
 @app.route("/graphplot", methods=["GET", "POST"])
 def datagrafer():
     data = fetch_data()
-    fald_opdaget = tjek_for_fald(data)
+    a = np.array(data)
+    fald_opdaget = tjek_for_fald(a)
     gyro_x = [entry["GyroX"] for entry in data]
     Timestamps = [(datetime.now() + timedelta(minutes=i)).strftime("%H:%M")
                   for i in range(len(gyro_x))]

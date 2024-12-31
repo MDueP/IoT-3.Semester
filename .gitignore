@@ -4,3 +4,5 @@ IoT-3.Semester.code-workspace
 *.docx
 *.crt
 *.key
+venv
+Web-App/Numpy_flag.py
