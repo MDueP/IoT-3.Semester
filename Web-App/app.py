@@ -45,6 +45,14 @@ def fetch_data():
 
 
 def tjek_for_fald(data):
+    thresholds = {
+        "mean_x": -331.4791666666667,
+        "mean_y": 163.55416666666667,
+        "mean_z": -118.30833333333334,
+        "std_x": 17.95343766493878,
+        "std_y": 75.00385752515743,
+        "std_z": 18.86432325240609
+    }
     gyro_x = np.array([entry["GyroX"] for entry in data])
     gyro_y = np.array([entry["GyroY"] for entry in data])
     gyro_z = np.array([entry["GyroZ"] for entry in data])
@@ -57,11 +65,9 @@ def tjek_for_fald(data):
     std_y = np.std(gyro_y)
     std_z = np.std(gyro_z)
 
-    threshold_std = 20
-    threshold_mean = 1.0
-    if std_x > threshold_std or std_y > threshold_std or std_z > threshold_std:
+    if std_x > thresholds["std_x"] or std_y > thresholds["std_y"] or std_z > thresholds["std_z"]:
         return True
-    if abs(mean_x) > threshold_mean or abs(mean_y) > threshold_mean or abs(mean_z) > threshold_mean:
+    if abs(mean_x - thresholds["mean_x"]) > thresholds["std_x"] or abs(mean_y - thresholds["mean_y"]) > thresholds["std_y"] or abs(mean_z - thresholds["mean_z"]) > thresholds["std_z"]:
         return True
     return False
 
